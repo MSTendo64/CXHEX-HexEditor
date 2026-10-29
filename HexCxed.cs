@@ -6,12 +6,11 @@ namespace cxhex
     public class HexEditor
     {
         private const int BytesPerRow = 16;
-        private const int OffsetWidth = 10;                          // "00000000  "
-        private const int HexWidth = BytesPerRow * 3;                // "XX " * 16
-        private const int AsciiColumn = OffsetWidth + HexWidth + 1;  // колонка ASCII
-        private const int RowWidth = AsciiColumn + BytesPerRow;      // полная ширина строки
+        private const int OffsetWidth = 10;                         
+        private const int HexWidth = BytesPerRow * 3;               
+        private const int AsciiColumn = OffsetWidth + HexWidth + 1;
+        private const int RowWidth = AsciiColumn + BytesPerRow;      
 
-        // Таблица "байт -> 'XX '" — чтобы не форматировать числа при каждой отрисовке
         private static readonly string[] HexTable = BuildHexTable();
 
         private List<byte> data = new List<byte>();
@@ -21,17 +20,16 @@ namespace cxhex
         private bool modified = false;
         private bool isRunning = true;
 
-        private int cursor = 0;        // индекс байта
-        private int nibble = 0;        // 0 - старшая тетрада, 1 - младшая
-        private int topRow = 0;        // первая видимая строка
+        private int cursor = 0;       
+        private int nibble = 0;        
+        private int topRow = 0;      
         private string statusMessage = "";
 
-        // ---- Состояние для частичной перерисовки ----
-        private bool fullRedraw = true;          // перерисовать весь экран (без Clear)
-        private bool needClear = true;           // нужен Console.Clear (после ввода имени файла и т.п.)
-        private int dirtyMin = int.MaxValue;     // диапазон "грязных" строк (абсолютные номера)
+        private bool fullRedraw = true;        
+        private bool needClear = true;        
+        private int dirtyMin = int.MaxValue;   
         private int dirtyMax = -1;
-        private int prevCursor = -1;             // где курсор был при прошлой отрисовке
+        private int prevCursor = -1;     
 
         public HexEditor(string path)
         {
@@ -50,8 +48,6 @@ namespace cxhex
             }
             return table;
         }
-
-        // ---------- Загрузка ----------
 
         private byte[] ReadAllBytes(string path)
         {
@@ -102,7 +98,6 @@ namespace cxhex
             }
         }
 
-        // ---------- Главный цикл ----------
 
         public void Run()
         {
@@ -121,7 +116,6 @@ namespace cxhex
             }
         }
 
-        // ---------- Отрисовка ----------
 
         private int VisibleRows()
         {
@@ -156,10 +150,6 @@ namespace cxhex
             return row >= dirtyMin && row <= dirtyMax;
         }
 
-        /// <summary>
-        /// Рисует только то, что изменилось: при простом движении курсора
-        /// это две ячейки + строка статуса. Весь экран — только при прокрутке.
-        /// </summary>
         private void Render()
         {
             int oldTop = topRow;
@@ -192,7 +182,6 @@ namespace cxhex
                     DrawRow(row);
             }
 
-            // Перерисовываем только старую и новую ячейки курсора
             if (prevCursor != cursor && prevCursor >= 0 && !IsRowDirty(prevCursor / BytesPerRow))
                 DrawCell(prevCursor);
             DrawCell(cursor);
@@ -229,7 +218,6 @@ namespace cxhex
 
             Console.SetCursorPosition(0, screenRow);
 
-            // Строка за концом файла — просто очищаем
             if (rowStart >= data.Count && rowStart != 0)
             {
                 Console.Write(new string(' ', Console.WindowWidth - 1));
@@ -240,7 +228,6 @@ namespace cxhex
             Console.Write(rowStart.ToString("X8") + "  ");
             Console.ResetColor();
 
-            // Вся hex+ASCII часть строки — одним вызовом Write
             StringBuilder sb = new StringBuilder(RowWidth);
             for (int i = 0; i < BytesPerRow; i++)
             {
@@ -258,7 +245,6 @@ namespace cxhex
             Console.Write(PadFrom(sb.ToString(), OffsetWidth));
         }
 
-        /// <summary>Перерисовывает одну ячейку (hex + ASCII), подсвечивая её, если это курсор.</summary>
         private void DrawCell(int idx)
         {
             if (idx < 0 || idx >= data.Count) return;
@@ -333,7 +319,6 @@ namespace cxhex
             return s.PadRight(width);
         }
 
-        // Дополняет пробелами с учётом того, что часть строки уже выведена слева
         private static string PadFrom(string s, int alreadyWritten)
         {
             int width = Console.WindowWidth - 1 - alreadyWritten;
@@ -346,7 +331,6 @@ namespace cxhex
 
         private void HandleKey(ConsoleKeyInfo key)
         {
-            // Сначала Ctrl-комбинации (D — ещё и hex-цифра)
             if (key.Modifiers == ConsoleModifiers.Control)
             {
                 if (key.Key == ConsoleKey.D)
@@ -445,8 +429,6 @@ namespace cxhex
             nibble = 0;
         }
 
-        // ---------- Редактирование ----------
-
         private void EditNibble(int value)
         {
             if (data.Count == 0) return;
@@ -468,7 +450,6 @@ namespace cxhex
 
             modified = true;
 
-            // Меняется только строка, где правили байт (курсор мог уйти на следующую)
             MarkDirty(oldRow);
             MarkDirty(cursor / BytesPerRow);
         }
@@ -490,8 +471,6 @@ namespace cxhex
 
             nibble = 0;
             modified = true;
-
-            // Все байты правее сдвинулись — перерисовываем от этой строки до конца
             MarkDirtyFrom(oldRow);
         }
 
@@ -510,8 +489,6 @@ namespace cxhex
 
             MarkDirtyFrom(Math.Min(oldRow, cursor / BytesPerRow));
         }
-
-        // ---------- Сохранение ----------
 
         private void SaveFile(bool force = false)
         {
@@ -548,7 +525,6 @@ namespace cxhex
                 statusMessage = "File saving error!";
             }
 
-            // Диалоги могли испортить нижние строки экрана
             needClear = true;
         }
 
@@ -564,7 +540,6 @@ namespace cxhex
             if (path.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
                 throw new ArgumentException("Path is incorrect.", nameof(path));
 
-            // OpenWrite не обрезает файл — пересоздаём, чтобы не осталось "хвоста"
             if (File.Exists(path))
                 File.Delete(path);
 
